@@ -16,6 +16,14 @@ public class Notification {
     private String status;
     private LocalDateTime timestamp;
 
+    public Notification(Long userId, String message, String type, String status, LocalDateTime timestamp) {
+        this.userId = userId;
+        this.message = message;
+        this.type = type;
+        this.status = status;
+        this.timestamp = timestamp;
+    }
+
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
