@@ -15,11 +15,16 @@ public class NotificationController {
     @Autowired
     private NotificationService service;
 
+    @Autowired
+    private MessageBrokerClient messageBrokerClient;
+
+    // Obtener todas las notificaciones
     @GetMapping
     public List<Notification> getAll() {
         return service.getAll();
     }
 
+    // Obtener una notificación por ID
     @GetMapping("/{id}")
     public ResponseEntity<Notification> getById(@PathVariable Long id) {
         return service.getById(id)
@@ -27,26 +32,39 @@ public class NotificationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/user/{userId}")
-    public List<Notification> getByUserId(@PathVariable Long userId) {
-        return service.getByUserId(userId);
-    }
-
+    // Crear una nueva notificación y enviar un mensaje a RabbitMQ
     @PostMapping
     public Notification create(@RequestBody Notification notification) {
-        return service.create(notification);
+        Notification createdNotification = service.create(notification);
+
+        String message = "New notification created: " + createdNotification.getId();
+        messageBrokerClient.sendMessage(message);
+
+        return createdNotification;
     }
 
+    // Actualizar una notificación y enviar un mensaje a RabbitMQ
     @PutMapping("/{id}")
     public ResponseEntity<Notification> update(@PathVariable Long id, @RequestBody Notification notification) {
         return service.update(id, notification)
-                .map(ResponseEntity::ok)
+                .map(updatedNotification -> {
+                    String message = "Notification updated: " + updatedNotification.getId();
+                    messageBrokerClient.sendMessage(message);
+
+                    return ResponseEntity.ok(updatedNotification);
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Eliminar una notificación y enviar un mensaje a RabbitMQ
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
+
+        // Enviar un mensaje a MessageBroker notificando que la notificación ha sido eliminada
+        String message = "Notification deleted: " + id;
+        messageBrokerClient.sendMessage(message);  // Llamada al microservicio MessageBroker
+
         return ResponseEntity.noContent().build();
     }
 }
